@@ -1,0 +1,170 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "target",
+        "type": "address"
+      }
+    ],
+    "name": "getETHBalance",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address[]",
+        "name": "targets",
+        "type": "address[]"
+      }
+    ],
+    "name": "getETHBalances",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "target",
+        "type": "address"
+      }
+    ],
+    "name": "getERC20Balance",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "address[]",
+        "name": "targets",
+        "type": "address[]"
+      }
+    ],
+    "name": "getERC20Balances",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address[]",
+        "name": "tokens",
+        "type": "address[]"
+      },
+      {
+        "internalType": "address[]",
+        "name": "targets",
+        "type": "address[]"
+      }
+    ],
+    "name": "getMultipleERC20Balances",
+    "outputs": [
+      {
+        "internalType": "uint256[][]",
+        "name": "",
+        "type": "uint256[][]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "target",
+        "type": "address"
+      },
+      {
+        "internalType": "address[]",
+        "name": "tokens",
+        "type": "address[]"
+      }
+    ],
+    "name": "getAddressBalances",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "ethBalance",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "tokenBalances",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address[]",
+        "name": "targets",
+        "type": "address[]"
+      },
+      {
+        "internalType": "address[]",
+        "name": "tokens",
+        "type": "address[]"
+      }
+    ],
+    "name": "getMultipleAddressBalances",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "ethBalances",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256[][]",
+        "name": "tokenBalances",
+        "type": "uint256[][]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

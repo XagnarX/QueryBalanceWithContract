@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: wallet_manager_db
+    environment:
+      POSTGRES_DB: wallet_manager
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    networks:
+      - wallet_network
+
+  # 可选：添加 pgAdmin 用于数据库管理
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: wallet_manager_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+    networks:
+      - wallet_network
+
+volumes:
+  postgres_data:
+
+networks:
+  wallet_network:
+    driver: bridge
