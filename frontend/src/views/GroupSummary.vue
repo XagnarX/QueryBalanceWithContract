@@ -1520,12 +1520,18 @@ const loadAvailableTokens = async () => {
 const formatContractAddress = () => {
   let address = newToken.value.contractAddress.trim()
   
-  // 移除所有非十六进制字符（除了0x前缀）
-  address = address.replace(/[^0-9a-fA-F]/g, '')
-  
-  // 如果用户输入了地址但没有0x前缀，自动添加
-  if (address.length > 0 && !address.startsWith('0x')) {
-    address = '0x' + address
+  // 先检查是否以0x开头，分别处理
+  if (address.toLowerCase().startsWith('0x')) {
+    // 如果以0x开头，只保留0x和后面的十六进制字符
+    const prefix = address.substring(0, 2)
+    const hexPart = address.substring(2).replace(/[^0-9a-fA-F]/g, '')
+    address = prefix.toLowerCase() + hexPart
+  } else {
+    // 如果不以0x开头，移除非十六进制字符然后添加前缀
+    address = address.replace(/[^0-9a-fA-F]/g, '')
+    if (address.length > 0) {
+      address = '0x' + address
+    }
   }
   
   // 限制长度为42个字符（0x + 40位十六进制）
