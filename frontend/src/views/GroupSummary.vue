@@ -1,26 +1,12 @@
 <template>
-  <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-    <div class="px-4 py-6 sm:px-0">
+  <div class="max-w-full mx-auto py-6 sm:px-3 lg:px-4">
+    <div class="px-2 py-6 sm:px-0">
       <div class="flex justify-between items-center">
         <div>
           <h1 class="text-3xl font-bold text-gray-900">分组统计汇总</h1>
           <p class="mt-2 text-gray-600">查看所有分组的余额统计和总览</p>
         </div>
-        <div class="flex items-center space-x-4">
-          <!-- 自动刷新状态指示 -->
-          <div v-if="autoRefresh.enabled" class="flex items-center text-sm text-gray-600">
-            <div class="flex items-center mr-2">
-              <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1"></div>
-              <span>自动刷新</span>
-            </div>
-            <span v-if="autoRefresh.currentGroup" class="text-primary-600">
-              正在刷新: {{ autoRefresh.currentGroup }}
-            </span>
-            <span v-else-if="autoRefresh.nextRoundIn > 0" class="text-gray-500">
-              下轮刷新: {{ autoRefresh.nextRoundIn }}s
-            </span>
-          </div>
-          
+        <div class="flex items-center space-x-4">          
           <!-- 设置按钮 -->
           <button @click="showSettings = !showSettings" class="btn-secondary">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -31,7 +17,7 @@
           
           <!-- 查询按钮组 -->
           <div class="flex space-x-2">
-            <button @click="loadAllGroupsBalance" :disabled="loading || autoRefresh.enabled" class="btn-primary">
+            <button @click="loadAllGroupsBalance" :disabled="loading" class="btn-primary">
               <svg v-if="progressInfo.show" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -85,111 +71,7 @@
             <p class="text-sm text-gray-600">管理全局可用的Token列表，添加新的Token合约。每个分组可以独立选择要查询的Token。</p>
           </div>
           
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <!-- 自动刷新开关 -->
-            <div class="flex items-center justify-between">
-              <div>
-                <label class="text-sm font-medium text-gray-700">自动刷新</label>
-                <p class="text-xs text-gray-500">启用定时刷新</p>
-              </div>
-              <div class="ml-4">
-                <button
-                  @click="toggleAutoRefresh"
-                  :class="[
-                    'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-                    autoRefresh.enabled ? 'bg-primary-600' : 'bg-gray-200'
-                  ]"
-                >
-                  <span
-                    :class="[
-                      'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                      autoRefresh.enabled ? 'translate-x-5' : 'translate-x-0'
-                    ]"
-                  ></span>
-                </button>
-              </div>
-            </div>
 
-            <!-- 轮次间隔设置 -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700">轮次间隔 (秒)</label>
-              <p class="text-xs text-gray-500 mb-2">完成一轮后等待时间</p>
-              <input
-                v-model.number="settings.roundInterval"
-                type="number"
-                min="10"
-                max="3600"
-                class="input"
-                :disabled="autoRefresh.enabled"
-              />
-            </div>
-
-            <!-- 组别间隔设置 -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700">组别间隔 (秒)</label>
-              <p class="text-xs text-gray-500 mb-2">分组之间等待时间</p>
-              <input
-                v-model.number="settings.groupInterval"
-                type="number"
-                min="1"
-                max="300"
-                class="input"
-                :disabled="autoRefresh.enabled"
-              />
-            </div>
-
-            <!-- 操作按钮 -->
-            <div class="flex items-end space-x-2">
-              <button
-                @click="saveSettings"
-                :disabled="autoRefresh.enabled"
-                class="btn-primary flex-1"
-              >
-                保存设置
-              </button>
-              <button
-                @click="resetSettings"
-                :disabled="autoRefresh.enabled"
-                class="btn-secondary"
-              >
-                重置
-              </button>
-            </div>
-          </div>
-
-          <!-- 刷新进度 -->
-          <div v-if="autoRefresh.enabled && autoRefresh.progress.total > 0" class="mt-6">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-medium text-gray-700">刷新进度</span>
-              <span class="text-sm text-gray-500">
-                {{ autoRefresh.progress.current }} / {{ autoRefresh.progress.total }}
-              </span>
-            </div>
-            <div class="w-full bg-gray-200 rounded-full h-2">
-              <div
-                class="bg-primary-600 h-2 rounded-full transition-all duration-300"
-                :style="{ width: `${(autoRefresh.progress.current / autoRefresh.progress.total) * 100}%` }"
-              ></div>
-            </div>
-          </div>
-
-          <!-- 刷新历史 -->
-          <div v-if="autoRefresh.enabled && autoRefresh.history.length > 0" class="mt-6">
-            <h4 class="text-sm font-medium text-gray-700 mb-3">最近刷新记录</h4>
-            <div class="space-y-2 max-h-32 overflow-y-auto">
-              <div
-                v-for="(record, index) in autoRefresh.history.slice(-5)"
-                :key="index"
-                class="flex items-center justify-between text-xs bg-gray-50 rounded px-3 py-2"
-              >
-                <span>{{ record.groupName }}</span>
-                <span :class="record.success ? 'text-green-600' : 'text-red-600'">
-                  {{ record.success ? '成功' : '失败' }}
-                </span>
-                <span class="text-gray-500">{{ record.time }}</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -198,7 +80,7 @@
 
     <!-- 总体统计卡片 -->
     <div class="mb-8">
-      <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
         <div class="card">
           <div class="card-body">
             <div class="flex items-center">
@@ -264,7 +146,27 @@
           <div class="card-body">
             <div class="flex items-center">
               <div class="flex-shrink-0">
-                <div class="w-8 h-8 bg-danger-500 rounded-md flex items-center justify-center">
+                <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
+                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h6a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h6a2 2 0 002-2v-4a2 2 0 00-2-2m8-8a2 2 0 012-2h2a2 2 0 012 2v8a2 2 0 01-2 2h-2a2 2 0 01-2-2V4z"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="ml-5 w-0 flex-1">
+                <dl>
+                  <dt class="text-sm font-medium text-gray-500 truncate">RPC节点</dt>
+                  <dd class="text-lg font-medium text-gray-900">{{ totalStats.totalRpcNodes }}</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <div class="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
                   <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
                   </svg>
@@ -272,8 +174,8 @@
               </div>
               <div class="ml-5 w-0 flex-1">
                 <dl>
-                  <dt class="text-sm font-medium text-gray-500 truncate">USDT总额</dt>
-                  <dd class="text-lg font-medium text-gray-900">{{ totalStats.totalUSDT }}</dd>
+                  <dt class="text-sm font-medium text-gray-500 truncate">Token合约</dt>
+                  <dd class="text-lg font-medium text-gray-900">{{ totalStats.totalTokens }}</dd>
                 </dl>
               </div>
             </div>
@@ -283,9 +185,9 @@
     </div>
 
     <!-- 分组卡片网格 -->
-    <div v-if="groupsData.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+    <div v-if="groupsData.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
       <div
-        v-for="(group, index) in groupsData.slice(0, 8)"
+        v-for="(group, index) in groupsData.slice(0, 10)"
         :key="group.group_id"
         class="card hover:shadow-lg transition-shadow duration-200"
       >
@@ -523,7 +425,26 @@
             <div class="mb-4">
               <div class="flex items-center justify-between">
                 <span class="text-sm font-medium text-gray-500">BNB余额</span>
-                <span class="text-lg font-bold text-primary-600">{{ group.total_bnb || '0' }}</span>
+                <div class="text-right">
+                  <div class="flex items-center space-x-2">
+                    <span class="text-lg font-bold text-primary-600">{{ group.total_bnb || '0' }}</span>
+                    <!-- BNB余额变化指示器 -->
+                    <div v-if="group.balance_changes && group.balance_changes.bnb_change" class="flex items-center">
+                      <div class="flex items-center text-xs px-1 py-0.5 rounded"
+                           :class="group.balance_changes.bnb_change.difference > 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'">
+                        <svg class="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path v-if="group.balance_changes.bnb_change.difference > 0" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+                          <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                        </svg>
+                        <span>{{ Math.abs(group.balance_changes.bnb_change.difference).toFixed(6) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- 最后刷新时间 -->
+                  <div v-if="group.last_refresh_time" class="text-xs text-gray-400 mt-0.5">
+                    {{ group.last_refresh_time }}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -535,12 +456,27 @@
                 class="flex items-center justify-between text-sm"
               >
                 <span class="text-gray-600">{{ token.symbol }}</span>
-                <span 
-                  class="font-medium"
-                  :class="parseFloat(token.balance || 0) > 0 ? 'text-gray-900' : 'text-gray-400'"
-                >
-                  {{ formatBalance(token.balance) }}
-                </span>
+                <div class="text-right">
+                  <div class="flex items-center space-x-2">
+                    <span 
+                      class="font-medium"
+                      :class="parseFloat(token.balance || 0) > 0 ? 'text-gray-900' : 'text-gray-400'"
+                    >
+                      {{ formatBalance(token.balance) }}
+                    </span>
+                    <!-- Token余额变化指示器 -->
+                    <div v-if="getTokenChange(group, token)" class="flex items-center">
+                      <div class="flex items-center text-xs px-1 py-0.5 rounded"
+                           :class="getTokenChange(group, token).difference > 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'">
+                        <svg class="w-2.5 h-2.5 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path v-if="getTokenChange(group, token).difference > 0" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+                          <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                        </svg>
+                        <span>{{ formatBalance(Math.abs(getTokenChange(group, token).difference).toString()) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -949,11 +885,6 @@ const progressInfo = ref({
   message: ''
 })
 
-// 自动刷新设置
-const settings = ref({
-  roundInterval: 60, // 轮次间隔（秒）
-  groupInterval: 5   // 组别间隔（秒）
-})
 
 // 自动刷新状态
 const autoRefresh = ref({
@@ -974,7 +905,6 @@ const groupCountdowns = ref(new Map()) // 存储每个分组的倒计时状态
 const groupTimers = ref(new Map()) // 存储每个分组的定时器
 
 onMounted(async () => {
-  loadSettingsFromStorage()
   loadGroupTokenSelections()
   loadGroupRpcSelections()
   
@@ -1083,6 +1013,21 @@ const refreshSingleGroup = async (groupId) => {
     const group = groupsData.value[groupIndex]
     
     console.log(`=== Countdown Refresh for Group ${group.group_name} ===`)
+    console.log('Current balance before refresh:', {
+      bnb: group.total_bnb,
+      tokens: group.token_totals?.length || 0,
+      has_previous_data: !!(group.previous_total_bnb !== null || group.previous_token_totals)
+    })
+    
+    // 保存历史数据 - 在重置状态之前保存
+    if (group.balance_loaded && (group.total_bnb !== null || group.token_totals)) {
+      group.previous_total_bnb = group.total_bnb
+      group.previous_token_totals = group.token_totals ? JSON.parse(JSON.stringify(group.token_totals)) : null
+      console.log('Saved previous balance data:', {
+        previous_bnb: group.previous_total_bnb,
+        previous_tokens: group.previous_token_totals?.length || 0
+      })
+    }
     
     // 重置分组状态
     group.balance_loaded = false
@@ -1115,6 +1060,107 @@ const refreshSingleGroup = async (groupId) => {
       startGroupCountdown(groupId, countdown.total)
     }
   }
+}
+
+// 计算余额变化
+const calculateBalanceChanges = (group, newBnbBalance, newTokenTotals) => {
+  console.log('=== calculateBalanceChanges Debug ===')
+  console.log('Group previous BNB:', group.previous_total_bnb)
+  console.log('Group previous tokens:', group.previous_token_totals?.length || 0)
+  console.log('New BNB:', newBnbBalance)
+  console.log('New tokens:', newTokenTotals?.length || 0)
+  
+  // Check if we have any previous data to compare against
+  if (group.previous_total_bnb === null && !group.previous_token_totals) {
+    console.log('No previous data, returning null')
+    return null
+  }
+  
+  const changes = {
+    bnb_change: null,
+    token_changes: [],
+    has_changes: false,
+    timestamp: new Date().toLocaleTimeString()
+  }
+  
+  // 计算BNB变化
+  if (group.previous_total_bnb !== null && newBnbBalance !== null) {
+    const prevBnb = parseFloat(group.previous_total_bnb || 0)
+    const newBnb = parseFloat(newBnbBalance || 0)
+    const diff = newBnb - prevBnb
+    
+    console.log(`BNB comparison: ${prevBnb} -> ${newBnb}, diff: ${diff}`)
+    
+    if (Math.abs(diff) > 0.000001) { // 忽略极小的误差
+      changes.bnb_change = {
+        previous: prevBnb,
+        current: newBnb,
+        difference: diff,
+        percentage: prevBnb > 0 ? ((diff / prevBnb) * 100) : 0
+      }
+      changes.has_changes = true
+      console.log('BNB change detected:', changes.bnb_change)
+    } else {
+      console.log('No significant BNB change')
+    }
+  }
+  
+  // 计算Token变化
+  if (group.previous_token_totals && newTokenTotals) {
+    console.log('Calculating token changes...')
+    const tokenChanges = []
+    const previousTokenMap = new Map()
+    const currentTokenMap = new Map()
+    
+    // 建立上次的Token余额映射
+    group.previous_token_totals.forEach(token => {
+      const key = token.contract_address || token.symbol
+      previousTokenMap.set(key, parseFloat(token.balance || 0))
+    })
+    
+    // 建立当前的Token余额映射
+    newTokenTotals.forEach(token => {
+      const key = token.contract_address || token.symbol
+      currentTokenMap.set(key, parseFloat(token.balance || 0))
+    })
+    
+    console.log('Previous tokens:', Array.from(previousTokenMap.entries()))
+    console.log('Current tokens:', Array.from(currentTokenMap.entries()))
+    
+    // 检查所有Token的变化
+    const allTokenKeys = new Set([...previousTokenMap.keys(), ...currentTokenMap.keys()])
+    
+    allTokenKeys.forEach(tokenKey => {
+      const prevBalance = previousTokenMap.get(tokenKey) || 0
+      const currentBalance = currentTokenMap.get(tokenKey) || 0
+      const diff = currentBalance - prevBalance
+      
+      console.log(`Token ${tokenKey}: ${prevBalance} -> ${currentBalance}, diff: ${diff}`)
+      
+      if (Math.abs(diff) > 0.000001) { // 忽略极小的误差
+        const tokenInfo = newTokenTotals.find(t => (t.contract_address || t.symbol) === tokenKey) ||
+                         group.previous_token_totals.find(t => (t.contract_address || t.symbol) === tokenKey)
+        
+        tokenChanges.push({
+          symbol: tokenInfo?.symbol || tokenKey,
+          contract_address: tokenInfo?.contract_address,
+          previous: prevBalance,
+          current: currentBalance,
+          difference: diff,
+          percentage: prevBalance > 0 ? ((diff / prevBalance) * 100) : 0
+        })
+        changes.has_changes = true
+        console.log(`Token change detected for ${tokenInfo?.symbol || tokenKey}:`, diff)
+      }
+    })
+    
+    changes.token_changes = tokenChanges
+  }
+  
+  console.log('Final changes result:', changes.has_changes ? changes : null)
+  console.log('=== End calculateBalanceChanges Debug ===')
+  
+  return changes.has_changes ? changes : null
 }
 
 const formatCountdownTime = (seconds) => {
@@ -1689,7 +1735,12 @@ const loadGroupsData = async () => {
         balance_loaded: false,
         balance_loading: false,
         queryProgress: null,
-        address_validation_passed: invalidAddresses.length === 0
+        address_validation_passed: invalidAddresses.length === 0,
+        // 余额变化追踪
+        previous_total_bnb: null,
+        previous_token_totals: null,
+        balance_changes: null, // 存储余额变化信息
+        last_refresh_time: null
       }
     })
     
@@ -1760,9 +1811,7 @@ const handleProgressUpdate = (progress) => {
 }
 
 const refreshData = () => {
-  if (!autoRefresh.value.enabled) {
-    loadGroupsData()
-  }
+  loadGroupsData()
 }
 
 // 查询单个分组的BNB余额（仅BNB，不包含Token）
@@ -1814,10 +1863,24 @@ const loadGroupBNBBalance = async (groupIndex) => {
 
     // 更新分组余额数据
     if (balanceData) {
+      console.log('=== Processing BNB Balance Data ===')
+      console.log('New BNB balance:', balanceData.total_bnb)
+      console.log('Has previous data:', !!(group.previous_total_bnb !== null || group.previous_token_totals))
+      
+      // 计算余额变化
+      const changes = calculateBalanceChanges(group, balanceData.total_bnb, balanceData.token_totals || [])
+      console.log('Calculated changes:', changes)
+      
+      // 更新当前余额
       group.total_bnb = balanceData.total_bnb
       group.token_totals = balanceData.token_totals || [] // 空的Token列表
+      group.balance_changes = changes
+      group.last_refresh_time = new Date().toLocaleTimeString()
       group.balance_loaded = true
       group.balance_loading = false
+      
+      console.log('Updated group balance changes:', group.balance_changes)
+      console.log('=== End Processing BNB Balance Data ===')
     }
 
   } catch (error) {
@@ -1884,10 +1947,25 @@ const loadGroupBalance = async (groupIndex) => {
 
     // 更新分组余额数据
     if (balanceData) {
+      console.log('=== Processing Full Balance Data ===')
+      console.log('New BNB balance:', balanceData.total_bnb)
+      console.log('New token count:', balanceData.token_totals?.length || 0)
+      console.log('Has previous data:', !!(group.previous_total_bnb !== null || group.previous_token_totals))
+      
+      // 计算余额变化
+      const changes = calculateBalanceChanges(group, balanceData.total_bnb, balanceData.token_totals)
+      console.log('Calculated changes:', changes)
+      
+      // 更新当前余额
       group.total_bnb = balanceData.total_bnb
       group.token_totals = balanceData.token_totals
+      group.balance_changes = changes
+      group.last_refresh_time = new Date().toLocaleTimeString()
       group.balance_loaded = true
       group.balance_loading = false
+      
+      console.log('Updated group balance changes:', group.balance_changes)
+      console.log('=== End Processing Full Balance Data ===')
     }
 
   } catch (error) {
@@ -2022,36 +2100,6 @@ const handleSingleGroupProgress = (group, progress) => {
   }
 }
 
-// 自动刷新相关方法
-const loadSettingsFromStorage = () => {
-  const saved = localStorage.getItem('groupSummarySettings')
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved)
-      settings.value = { ...settings.value, ...parsed }
-    } catch (e) {
-      console.warn('Failed to load settings:', e)
-    }
-  }
-}
-
-const saveSettingsToStorage = () => {
-  localStorage.setItem('groupSummarySettings', JSON.stringify(settings.value))
-}
-
-const saveSettings = () => {
-  saveSettingsToStorage()
-  window.showNotification('success', '设置已保存')
-}
-
-const resetSettings = () => {
-  settings.value = {
-    roundInterval: 60,
-    groupInterval: 5
-  }
-  saveSettingsToStorage()
-  window.showNotification('info', '设置已重置')
-}
 
 const toggleAutoRefresh = () => {
   if (autoRefresh.value.enabled) {
@@ -2181,25 +2229,21 @@ const totalStats = computed(() => {
     activeGroups: groupsData.value.length,
     totalAddresses: 0,
     totalBNB: 0,
-    totalUSDT: 0
+    totalRpcNodes: availableRpcEndpoints.value.length,
+    totalTokens: availableTokens.value.filter(token => token.is_active).length
   }
 
   groupsData.value.forEach(group => {
     stats.totalAddresses += group.valid_address_count || 0
     stats.totalBNB += parseFloat(group.total_bnb || 0)
-    
-    // 计算USDT总额
-    const usdtToken = group.token_totals?.find(t => t.symbol === 'USDT')
-    if (usdtToken) {
-      stats.totalUSDT += parseFloat(usdtToken.balance || 0)
-    }
   })
 
   return {
     activeGroups: stats.activeGroups,
     totalAddresses: stats.totalAddresses,
     totalBNB: stats.totalBNB.toFixed(6),
-    totalUSDT: formatBalance(stats.totalUSDT.toString())
+    totalRpcNodes: stats.totalRpcNodes,
+    totalTokens: stats.totalTokens
   }
 })
 
@@ -2280,6 +2324,18 @@ const getMainTokens = (tokens, groupId = null) => {
   return result
 }
 
+// 获取Token的变化信息
+const getTokenChange = (group, token) => {
+  if (!group.balance_changes || !group.balance_changes.token_changes) {
+    return null
+  }
+  
+  return group.balance_changes.token_changes.find(change => 
+    change.contract_address === token.contract_address || 
+    change.symbol === token.symbol
+  ) || null
+}
+
 const formatBalance = (balance) => {
   const num = parseFloat(balance)
   if (num === 0) return '0'
@@ -2292,4 +2348,5 @@ const formatBalance = (balance) => {
 const viewGroupDetail = (groupId) => {
   router.push(`/balance/${groupId}`)
 }
+
 </script>
