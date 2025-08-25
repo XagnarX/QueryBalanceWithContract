@@ -203,7 +203,7 @@ func (h *WalletHandler) DeleteAddress(c *gin.Context) {
 
 // DeleteGroup 删除分组
 // @Summary 删除钱包分组
-// @Description 删除指定的钱包分组
+// @Description 删除指定的钱包分组及其下的所有地址
 // @Tags 钱包管理
 // @Param user_id path int true "用户ID"
 // @Param group_id path int true "分组ID"
@@ -228,7 +228,7 @@ func (h *WalletHandler) DeleteGroup(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "分组删除成功"})
+	c.JSON(http.StatusOK, gin.H{"message": "分组及其下的地址删除成功"})
 }
 
 // GetTokens 获取支持的代币列表

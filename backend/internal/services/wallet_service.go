@@ -149,22 +149,31 @@ func (s *WalletService) DeleteAddress(userID, addressID uint) error {
 	return nil
 }
 
-// DeleteGroup 删除分组（地址会被移出分组但不删除）
+// DeleteGroup 删除分组及其下的所有钱包地址
 func (s *WalletService) DeleteGroup(userID, groupID uint) error {
-	// 先将分组中的地址移出分组
-	if err := s.db.Model(&models.WalletAddress{}).Where("group_id = ?", groupID).Update("group_id", nil).Error; err != nil {
-		return fmt.Errorf("移出分组地址失败: %v", err)
+	// 验证分组属于该用户
+	var group models.WalletGroup
+	if err := s.db.Where("id = ? AND user_id = ?", groupID, userID).First(&group).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("分组不存在")
+		}
+		return fmt.Errorf("验证分组失败: %v", err)
 	}
 
-	// 删除分组
-	result := s.db.Where("id = ? AND user_id = ?", groupID, userID).Delete(&models.WalletGroup{})
-	if result.Error != nil {
-		return fmt.Errorf("删除分组失败: %v", result.Error)
-	}
-	if result.RowsAffected == 0 {
-		return errors.New("分组不存在")
-	}
-	return nil
+	// 使用事务确保数据一致性
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// 删除分组中的所有地址
+		if err := tx.Where("group_id = ? AND user_id = ?", groupID, userID).Delete(&models.WalletAddress{}).Error; err != nil {
+			return fmt.Errorf("删除分组地址失败: %v", err)
+		}
+
+		// 删除分组
+		if err := tx.Where("id = ? AND user_id = ?", groupID, userID).Delete(&models.WalletGroup{}).Error; err != nil {
+			return fmt.Errorf("删除分组失败: %v", err)
+		}
+
+		return nil
+	})
 }
 
 // GetTokens 获取支持的代币列表
