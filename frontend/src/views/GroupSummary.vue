@@ -187,7 +187,7 @@
     <!-- 分组卡片网格 -->
     <div v-if="groupsData.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
       <div
-        v-for="(group, index) in groupsData.slice(0, 10)"
+        v-for="(group, index) in groupsData.slice(0, 20)"
         :key="group.group_id"
         class="card hover:shadow-lg transition-shadow duration-200"
       >

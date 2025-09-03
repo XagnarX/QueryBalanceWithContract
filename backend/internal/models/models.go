@@ -41,7 +41,7 @@ type WalletAddress struct {
 	ID        uint      `json:"id" gorm:"primaryKey"`
 	UserID    uint      `json:"user_id" gorm:"not null;index"`
 	GroupID   *uint     `json:"group_id" gorm:"index"`
-	Address   string    `json:"address" gorm:"size:42;not null"`
+	Address   string    `json:"address" gorm:"size:42;not null;uniqueIndex:idx_user_group_address,composite:user_id,group_id"`
 	Label     string    `json:"label" gorm:"size:100"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

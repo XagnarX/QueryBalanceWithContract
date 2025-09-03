@@ -74,10 +74,32 @@ func (s *WalletService) AddAddress(userID uint, req *models.AddAddressRequest) (
 	// 标准化地址格式
 	address := common.HexToAddress(req.Address).Hex()
 
-	// 检查地址是否已存在
+	// 检查地址是否在同一分组内已存在
 	var existingAddr models.WalletAddress
-	if err := s.db.Where("user_id = ? AND address = ?", userID, address).First(&existingAddr).Error; err == nil {
-		return nil, errors.New("地址已存在")
+	var whereClause string
+	var whereArgs []interface{}
+	
+	if req.GroupID != nil {
+		// 检查在指定分组内是否重复
+		whereClause = "user_id = ? AND address = ? AND group_id = ?"
+		whereArgs = []interface{}{userID, address, *req.GroupID}
+	} else {
+		// 检查在无分组状态下是否重复
+		whereClause = "user_id = ? AND address = ? AND group_id IS NULL"
+		whereArgs = []interface{}{userID, address}
+	}
+	
+	if err := s.db.Where(whereClause, whereArgs...).First(&existingAddr).Error; err == nil {
+		// 预加载关联的分组信息
+		s.db.Preload("Group").First(&existingAddr, existingAddr.ID)
+		
+		groupName := "未分组"
+		if existingAddr.Group != nil {
+			groupName = existingAddr.Group.Name
+		}
+		
+		return nil, fmt.Errorf("地址已存在于分组 '%s' 中，地址: %s，标签: %s", 
+			groupName, existingAddr.Address, existingAddr.Label)
 	}
 
 	// 如果指定了分组，验证分组是否属于该用户
