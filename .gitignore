@@ -180,6 +180,10 @@ go.sum
 ehthumbs.db
 Thumbs.db
 
+# ai files
+.claude
+.serena
+
 # Database
 *.db
 *.sqlite

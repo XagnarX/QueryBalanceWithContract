@@ -58,7 +58,9 @@ func (s *WalletService) CreateGroup(userID uint, req *models.CreateGroupRequest)
 // GetUserGroups 获取用户的所有分组
 func (s *WalletService) GetUserGroups(userID uint) ([]models.WalletGroup, error) {
 	var groups []models.WalletGroup
-	if err := s.db.Where("user_id = ?", userID).Preload("WalletAddresses").Find(&groups).Error; err != nil {
+	if err := s.db.Where("user_id = ?", userID).
+		Order("sort_order ASC, created_at ASC").
+		Preload("WalletAddresses").Find(&groups).Error; err != nil {
 		return nil, fmt.Errorf("查询分组失败: %v", err)
 	}
 	return groups, nil
@@ -216,4 +218,50 @@ func formatBalance(balance *big.Int, decimals int) string {
 	divisor := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)
 	amount := new(big.Float).Quo(new(big.Float).SetInt(balance), new(big.Float).SetInt(divisor))
 	return strings.TrimRight(strings.TrimRight(amount.Text('f', 6), "0"), ".")
+}
+
+// UpdateGroupsOrder updates the sort order of groups for a user
+func (s *WalletService) UpdateGroupsOrder(userID uint, groupOrders []models.GroupOrderItem) error {
+	// Start transaction for atomic operation
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Verify all groups belong to the user
+	groupIDs := make([]uint, len(groupOrders))
+	for i, item := range groupOrders {
+		groupIDs[i] = item.GroupID
+	}
+
+	var count int64
+	if err := tx.Model(&models.WalletGroup{}).Where("user_id = ? AND id IN ?", userID, groupIDs).Count(&count).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if int(count) != len(groupOrders) {
+		tx.Rollback()
+		return errors.New("some groups do not belong to the user or do not exist")
+	}
+
+	// Update sort order for each group
+	for _, item := range groupOrders {
+		if err := tx.Model(&models.WalletGroup{}).Where("id = ? AND user_id = ?", item.GroupID, userID).Update("sort_order", item.SortOrder).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
 }

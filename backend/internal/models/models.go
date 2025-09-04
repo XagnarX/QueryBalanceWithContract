@@ -28,6 +28,7 @@ type WalletGroup struct {
 	UserID      uint      `json:"user_id" gorm:"not null;index"`
 	Name        string    `json:"name" gorm:"size:100;not null"`
 	Description string    `json:"description" gorm:"type:text"`
+	SortOrder   int       `json:"sort_order" gorm:"not null;default:0;index:idx_wallet_groups_user_sort,composite:user_id"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 
@@ -140,6 +141,17 @@ type LoginRequest struct {
 type CreateGroupRequest struct {
 	Name        string `json:"name" binding:"required,max=100"`
 	Description string `json:"description"`
+}
+
+// ReorderGroupsRequest 重排序分组请求
+type ReorderGroupsRequest struct {
+	GroupOrders []GroupOrderItem `json:"group_orders" binding:"required,min=1"`
+}
+
+// GroupOrderItem 分组排序项
+type GroupOrderItem struct {
+	GroupID   uint `json:"group_id" binding:"required"`
+	SortOrder int  `json:"sort_order" binding:"required,min=0"`
 }
 
 // AddAddressRequest 添加地址请求

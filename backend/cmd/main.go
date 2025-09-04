@@ -61,6 +61,7 @@ func main() {
 			// 钱包分组相关路由
 			protected.POST("/:user_id/groups", walletHandler.CreateGroup)                          // 创建分组
 			protected.GET("/:user_id/groups", walletHandler.GetGroups)                             // 获取分组列表
+			protected.PUT("/:user_id/groups/reorder", walletHandler.ReorderGroups)                 // 重排序分组
 			protected.GET("/:user_id/groups/:group_id/addresses", walletHandler.GetGroupAddresses) // 获取分组地址
 			protected.DELETE("/:user_id/groups/:group_id", walletHandler.DeleteGroup)              // 删除分组
 

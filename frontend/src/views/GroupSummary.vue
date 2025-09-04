@@ -184,13 +184,39 @@
       </div>
     </div>
 
-    <!-- 分组卡片网格 -->
-    <div v-if="groupsData.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-      <div
-        v-for="(group, index) in groupsData.slice(0, 20)"
-        :key="group.group_id"
-        class="card hover:shadow-lg transition-shadow duration-200"
+    <!-- 分组卡片拖拽列表 -->
+    <div v-if="groupsData.length > 0" class="space-y-6">
+      <!-- 排序提示 -->
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <div class="flex items-center space-x-2">
+          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+          </svg>
+          <span class="text-sm font-medium text-blue-800">拖拽卡片来重新排序分组</span>
+          <span v-if="sortingInProgress" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            保存中...
+          </span>
+        </div>
+      </div>
+
+      <!-- 可拖拽的分组列表 -->
+      <draggable 
+        v-model="groupsData" 
+        @start="onDragStart"
+        @end="onDragEnd"
+        item-key="group_id"
+        :disabled="sortingInProgress"
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6"
+        ghost-class="ghost"
+        chosen-class="chosen"
       >
+        <template #item="{ element: group, index }">
+          <div
+            :class="[
+              'card hover:shadow-lg transition-all duration-200 cursor-move',
+              sortingInProgress ? 'opacity-50' : ''
+            ]"
+          >
         <div class="card-header">
           <div class="flex items-center justify-between">
             <h3 class="text-lg font-medium text-gray-900 truncate">
@@ -491,7 +517,9 @@
             </div>
           </div>
         </div>
-      </div>
+          </div>
+        </template>
+      </draggable>
     </div>
 
     <!-- 加载状态 -->
@@ -846,6 +874,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useWalletStore } from '@/stores/wallet'
 import { useChainStore } from '@/stores/chain'
+import draggable from 'vuedraggable'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -854,6 +883,7 @@ const walletStore = useWalletStore()
 const loading = ref(false)
 const groupsData = ref([])
 const showSettings = ref(false)
+const sortingInProgress = ref(false)
 
 // RPC管理相关
 const showRpcManager = ref(false)
@@ -2349,4 +2379,82 @@ const viewGroupDetail = (groupId) => {
   router.push(`/balance/${groupId}`)
 }
 
+// Drag and Drop handlers
+const onDragStart = (evt) => {
+  console.log('Drag started:', evt)
+}
+
+const onDragEnd = async (evt) => {
+  console.log('Drag ended:', evt)
+  
+  if (evt.oldIndex === evt.newIndex) {
+    // No position change, no need to update
+    return
+  }
+
+  sortingInProgress.value = true
+
+  try {
+    // Create the reorder request payload
+    const groupOrders = groupsData.value.map((group, index) => ({
+      group_id: group.group_id,
+      sort_order: index + 1 // 1-based ordering
+    }))
+
+    console.log('Reordering groups:', groupOrders)
+
+    // Call API to update sort order
+    const response = await fetch(`/api/users/${authStore.userId}/groups/reorder`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStore.token}`
+      },
+      body: JSON.stringify({
+        group_orders: groupOrders
+      })
+    })
+
+    if (response.ok) {
+      window.showNotification('success', '分组排序已保存')
+      console.log('Group order updated successfully')
+    } else {
+      throw new Error('Failed to update group order')
+    }
+  } catch (error) {
+    console.error('Failed to update group order:', error)
+    window.showNotification('error', '排序保存失败')
+    
+    // Revert the order on error
+    await loadGroupsData()
+  } finally {
+    sortingInProgress.value = false
+  }
+}
+
 </script>
+
+<style scoped>
+/* Drag and drop styles */
+.ghost {
+  opacity: 0.5;
+}
+
+.chosen {
+  transform: rotate(5deg);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.sortable-fallback {
+  display: none;
+}
+
+.sortable-ghost {
+  opacity: 0.4;
+}
+
+.sortable-chosen {
+  transform: scale(1.05);
+  transition: all 0.2s ease;
+}
+</style>

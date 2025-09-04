@@ -231,6 +231,38 @@ func (h *WalletHandler) DeleteGroup(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "分组及其下的地址删除成功"})
 }
 
+// ReorderGroups updates the sort order of groups
+// @Summary 重排序钱包分组
+// @Description 更新用户钱包分组的显示顺序
+// @Tags 钱包管理
+// @Accept json
+// @Produce json
+// @Param user_id path int true "用户ID"
+// @Param request body models.ReorderGroupsRequest true "重排序请求"
+// @Success 200 {object} gin.H
+// @Failure 400 {object} gin.H
+// @Router /api/users/{user_id}/groups/reorder [put]
+func (h *WalletHandler) ReorderGroups(c *gin.Context) {
+	userID, err := h.getUserID(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var req models.ReorderGroupsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数无效: " + err.Error()})
+		return
+	}
+
+	if err := h.walletService.UpdateGroupsOrder(userID, req.GroupOrders); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "分组排序更新成功"})
+}
+
 // GetTokens 获取支持的代币列表
 // @Summary 获取代币列表
 // @Description 获取系统支持的所有代币
