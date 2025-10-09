@@ -2441,7 +2441,6 @@ const onDragEnd = async (evt) => {
 }
 
 .chosen {
-  transform: rotate(5deg);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
 
