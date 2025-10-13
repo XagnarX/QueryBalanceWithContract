@@ -1,8 +1,17 @@
 import axios from 'axios'
 
+// Determine API base URL
+// Always use relative path '/api' - Vite proxy will handle it
+// The proxy works for both localhost and LAN access
+const getApiBaseURL = () => {
+  const baseURL = '/api'
+  console.log(`📡 API Base URL: ${baseURL} (via Vite proxy)`)
+  return baseURL
+}
+
 // 创建axios实例
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: getApiBaseURL(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
@@ -146,24 +155,24 @@ export const tokenAPI = {
 
 // 分组配置相关API
 export const groupSettingsAPI = {
-  // 获取所有分组配置
-  getAllSettings(userId) {
-    return api.get(`/users/${userId}/groups/settings`)
+  // 获取所有分组配置 (需要 chain_id)
+  getAllSettings(userId, chainId) {
+    return api.get(`/users/${userId}/groups/settings?chain_id=${chainId}`)
   },
 
-  // 获取单个分组配置
-  getSettings(userId, groupId) {
-    return api.get(`/users/${userId}/groups/${groupId}/settings`)
+  // 获取单个分组配置 (需要 chain_id)
+  getSettings(userId, groupId, chainId) {
+    return api.get(`/users/${userId}/groups/${groupId}/settings?chain_id=${chainId}`)
   },
 
-  // 更新分组配置
+  // 更新分组配置 (settingsData 必须包含 chain_id)
   updateSettings(userId, groupId, settingsData) {
     return api.put(`/users/${userId}/groups/${groupId}/settings`, settingsData)
   },
 
-  // 删除分组配置
-  deleteSettings(userId, groupId) {
-    return api.delete(`/users/${userId}/groups/${groupId}/settings`)
+  // 删除分组配置 (需要 chain_id)
+  deleteSettings(userId, groupId, chainId) {
+    return api.delete(`/users/${userId}/groups/${groupId}/settings?chain_id=${chainId}`)
   }
 }
 

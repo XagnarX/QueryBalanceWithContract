@@ -1,0 +1,2 @@
+# Python dependencies for database migration scripts
+psycopg2-binary==2.9.9

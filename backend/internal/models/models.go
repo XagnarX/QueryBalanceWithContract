@@ -55,8 +55,9 @@ type WalletAddress struct {
 // WalletGroupSettings 钱包分组配置模型
 type WalletGroupSettings struct {
 	ID                uint      `json:"id" gorm:"primaryKey"`
-	GroupID           uint      `json:"group_id" gorm:"not null;uniqueIndex:uq_group_settings_user_group,composite:user_id;index"`
-	UserID            uint      `json:"user_id" gorm:"not null;index;uniqueIndex:uq_group_settings_user_group,composite:user_id"`
+	GroupID           uint      `json:"group_id" gorm:"not null;uniqueIndex:uq_group_settings_user_group_chain,composite:user_id,chain_id;index"`
+	UserID            uint      `json:"user_id" gorm:"not null;index;uniqueIndex:uq_group_settings_user_group_chain,composite:user_id,chain_id"`
+	ChainID           int       `json:"chain_id" gorm:"not null;default:56;index;uniqueIndex:uq_group_settings_user_group_chain,composite:user_id,chain_id"`
 	CountdownEnabled  bool      `json:"countdown_enabled" gorm:"default:false"`
 	CountdownDuration int       `json:"countdown_duration" gorm:"default:600"`
 	SelectedRPCID     *uint     `json:"selected_rpc_id" gorm:"index"`
@@ -67,6 +68,7 @@ type WalletGroupSettings struct {
 	// 关联关系
 	User  User             `json:"user,omitempty" gorm:"foreignKey:UserID"`
 	Group WalletGroup      `json:"group,omitempty" gorm:"foreignKey:GroupID"`
+	Chain Chain            `json:"chain,omitempty" gorm:"foreignKey:ChainID;references:ChainID"`
 	RPC   *UserRPCEndpoint `json:"rpc,omitempty" gorm:"foreignKey:SelectedRPCID"`
 }
 
@@ -181,8 +183,9 @@ type AddAddressRequest struct {
 
 // UpdateGroupSettingsRequest 更新分组配置请求
 type UpdateGroupSettingsRequest struct {
+	ChainID           int    `json:"chain_id" binding:"required"`
 	CountdownEnabled  bool   `json:"countdown_enabled"`
-	CountdownDuration int    `json:"countdown_duration" binding:"min=10,max=7200"`
+	CountdownDuration int    `json:"countdown_duration" binding:"min=1,max=7200"`
 	SelectedRPCID     *uint  `json:"selected_rpc_id"`
 	SelectedTokenIDs  []uint `json:"selected_token_ids"`
 }
@@ -192,6 +195,7 @@ type GroupSettingsResponse struct {
 	ID                uint   `json:"id"`
 	GroupID           uint   `json:"group_id"`
 	UserID            uint   `json:"user_id"`
+	ChainID           int    `json:"chain_id"`
 	CountdownEnabled  bool   `json:"countdown_enabled"`
 	CountdownDuration int    `json:"countdown_duration"`
 	SelectedRPCID     *uint  `json:"selected_rpc_id"`

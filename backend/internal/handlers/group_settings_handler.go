@@ -44,7 +44,20 @@ func (h *GroupSettingsHandler) GetGroupSettings(c *gin.Context) {
 		return
 	}
 
-	settings, err := h.service.GetGroupSettings(userID, groupID)
+	// Get chain_id from query parameter
+	chainIDStr := c.Query("chain_id")
+	if chainIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少chain_id参数"})
+		return
+	}
+
+	chainID, err := strconv.Atoi(chainIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "chain_id参数无效"})
+		return
+	}
+
+	settings, err := h.service.GetGroupSettings(userID, groupID, chainID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -75,7 +88,20 @@ func (h *GroupSettingsHandler) GetAllGroupSettings(c *gin.Context) {
 		return
 	}
 
-	settingsList, err := h.service.GetAllGroupSettings(userID)
+	// Get chain_id from query parameter
+	chainIDStr := c.Query("chain_id")
+	if chainIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少chain_id参数"})
+		return
+	}
+
+	chainID, err := strconv.Atoi(chainIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "chain_id参数无效"})
+		return
+	}
+
+	settingsList, err := h.service.GetAllGroupSettings(userID, chainID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -162,7 +188,20 @@ func (h *GroupSettingsHandler) DeleteGroupSettings(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.DeleteGroupSettings(userID, groupID); err != nil {
+	// Get chain_id from query parameter
+	chainIDStr := c.Query("chain_id")
+	if chainIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少chain_id参数"})
+		return
+	}
+
+	chainID, err := strconv.Atoi(chainIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "chain_id参数无效"})
+		return
+	}
+
+	if err := h.service.DeleteGroupSettings(userID, groupID, chainID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

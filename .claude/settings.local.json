@@ -24,7 +24,8 @@
       "mcp__serena__insert_after_symbol",
       "Bash(go build:*)",
       "Bash(cat:*)",
-      "Bash(PGPASSWORD=postgres psql:*)"
+      "Bash(PGPASSWORD=postgres psql:*)",
+      "Bash(awk:*)"
     ],
     "deny": [],
     "ask": []

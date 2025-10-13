@@ -1055,9 +1055,33 @@ onMounted(async () => {
   loadGroupsData()
 })
 
+// Watch for chain switching - reload settings when chain changes
+watch(() => useChainStore().currentChain, async (newChainId, oldChainId) => {
+  if (newChainId && newChainId !== oldChainId) {
+    console.log(`=== Chain switched from ${oldChainId} to ${newChainId} ===`)
+
+    // Stop all running countdowns
+    groupTimers.value.forEach(timer => {
+      if (timer) clearInterval(timer)
+    })
+    groupTimers.value.clear()
+
+    // Reload chain-specific resources
+    console.log('Reloading RPC endpoints and tokens for new chain...')
+    await loadAvailableRpcEndpoints()
+    await loadAvailableTokens()
+
+    // Reload settings for the new chain
+    console.log('Reloading group settings for new chain...')
+    await loadGroupSettingsFromDB()
+
+    console.log('✓ Chain switch completed, all configurations reloaded')
+  }
+})
+
 onBeforeUnmount(() => {
   stopAutoRefresh()
-  
+
   // 清理分组倒计时定时器
   groupTimers.value.forEach(timer => {
     if (timer) clearInterval(timer)
@@ -1640,7 +1664,7 @@ const loadAvailableTokens = async () => {
   try {
     const chainStore = useChainStore()
     const currentChainId = chainStore.currentChain
-    
+
     if (!currentChainId) {
       window.showNotification('warning', '请先选择区块链网络')
       return
@@ -2631,10 +2655,19 @@ const truncateAddress = (address) => {
 // Load settings from database
 const loadGroupSettingsFromDB = async () => {
   try {
-    const response = await groupSettingsAPI.getAllSettings(authStore.userId)
+    const chainStore = useChainStore()
+    const currentChainId = chainStore.currentChain
+
+    if (!currentChainId) {
+      console.warn('Cannot load group settings: no chain selected')
+      return
+    }
+
+    const response = await groupSettingsAPI.getAllSettings(authStore.userId, currentChainId)
     const settingsList = response.data
 
     console.log('=== Loading Group Settings from DB ===')
+    console.log('Chain ID:', currentChainId)
     console.log('Raw response:', response)
     console.log('Settings list:', settingsList)
     console.log('Settings count:', settingsList.length)
@@ -2723,16 +2756,26 @@ const saveGroupSettings = async (groupId) => {
   // Debounce: save after 1 second of no changes
   const timer = setTimeout(async () => {
     try {
+      const chainStore = useChainStore()
+      const currentChainId = chainStore.currentChain
+
+      if (!currentChainId) {
+        console.warn(`Cannot save settings for group ${groupId}: no chain selected`)
+        return
+      }
+
       const countdown = groupCountdowns.value.get(groupId)
       const selectedRpcId = groupRpcSelections.value.get(groupId)
       const selectedTokenIds = groupTokenSelections.value.get(groupId) || []
 
       console.log(`=== Saving settings for group ${groupId} ===`)
+      console.log('Chain ID:', currentChainId)
       console.log('countdown:', countdown)
       console.log('selectedRpcId:', selectedRpcId, 'type:', typeof selectedRpcId)
       console.log('selectedTokenIds:', selectedTokenIds)
 
       const settingsData = {
+        chain_id: currentChainId, // Add chain_id to request body
         countdown_enabled: countdown?.enabled || false,
         countdown_duration: parseInt(countdown?.total, 10) || 600,
         selected_rpc_id: selectedRpcId !== undefined ? selectedRpcId : null,
