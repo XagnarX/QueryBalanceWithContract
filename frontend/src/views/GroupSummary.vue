@@ -17,6 +17,12 @@
           
           <!-- 查询按钮组 -->
           <div class="flex space-x-2">
+            <button @click="showCreateGroupModal = true" class="btn-secondary">
+              创建新分组
+            </button>
+            <button @click="showAddAddressModal = true" class="btn-secondary">
+              添加地址
+            </button>
             <button @click="loadAllGroupsBalance" :disabled="loading" class="btn-primary">
               <svg v-if="progressInfo.show" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -614,6 +620,73 @@
     </div>
   </div>
 
+  <!-- Create Group Modal -->
+  <div v-if="showCreateGroupModal" class="fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+      <div class="fixed inset-0 bg-gray-500 bg-opacity-75" @click="showCreateGroupModal = false"></div>
+      <div class="bg-white rounded-lg p-6 max-w-md w-full relative z-10">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">创建新分组</h3>
+        <form @submit.prevent="createGroup">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">分组名称</label>
+              <input v-model="newGroup.name" class="input mt-1" required />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">描述（可选）</label>
+              <textarea v-model="newGroup.description" class="input mt-1" rows="3"></textarea>
+            </div>
+          </div>
+          <div class="mt-6 flex space-x-3">
+            <button type="submit" class="btn-primary">创建</button>
+            <button type="button" @click="showCreateGroupModal = false" class="btn-secondary">取消</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Address Modal -->
+  <div v-if="showAddAddressModal" class="fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+      <div class="fixed inset-0 bg-gray-500 bg-opacity-75" @click="showAddAddressModal = false"></div>
+      <div class="bg-white rounded-lg p-6 max-w-md w-full relative z-10">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">添加新地址</h3>
+        <form @submit.prevent="addAddress">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">钱包地址</label>
+              <textarea
+                v-model="newAddress.address"
+                class="input mt-1 min-h-[120px] resize-y"
+                placeholder="支持批量添加，多个地址请用逗号分割&#10;0x1234...,0x5678...,0x9abc..."
+                required
+              ></textarea>
+              <p class="text-xs text-gray-500 mt-1">支持批量添加，多个地址请用逗号分割</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">标签（可选）</label>
+              <input v-model="newAddress.label" class="input mt-1" placeholder="给地址添加标签" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">分组（可选）</label>
+              <select v-model="newAddress.group_id" class="input mt-1">
+                <option value="">选择分组</option>
+                <option v-for="group in walletStore.groups" :key="group.id" :value="group.id">
+                  {{ group.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+          <div class="mt-6 flex space-x-3">
+            <button type="submit" class="btn-primary">添加</button>
+            <button type="button" @click="showAddAddressModal = false" class="btn-secondary">取消</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- RPC管理模态框 -->
   <div v-if="showRpcManager" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
     <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
@@ -869,11 +942,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useWalletStore } from '@/stores/wallet'
 import { useChainStore } from '@/stores/chain'
+import { groupSettingsAPI } from '@/services/api'
 import draggable from 'vuedraggable'
 
 const router = useRouter()
@@ -884,6 +958,19 @@ const loading = ref(false)
 const groupsData = ref([])
 const showSettings = ref(false)
 const sortingInProgress = ref(false)
+
+// Modal states
+const showCreateGroupModal = ref(false)
+const showAddAddressModal = ref(false)
+const newGroup = ref({
+  name: '',
+  description: ''
+})
+const newAddress = ref({
+  address: '',
+  label: '',
+  group_id: ''
+})
 
 // RPC管理相关
 const showRpcManager = ref(false)
@@ -935,9 +1022,13 @@ const groupCountdowns = ref(new Map()) // 存储每个分组的倒计时状态
 const groupTimers = ref(new Map()) // 存储每个分组的定时器
 
 onMounted(async () => {
-  loadGroupTokenSelections()
-  loadGroupRpcSelections()
-  
+  // Load settings from database first
+  await loadGroupSettingsFromDB()
+
+  // Note: Removed localStorage loading functions since we now use database
+  // loadGroupTokenSelections() - REMOVED: Using database instead
+  // loadGroupRpcSelections() - REMOVED: Using database instead
+
   // 确保chainStore已经加载了chains数据
   const chainStore = useChainStore()
   if (chainStore.chains.length === 0) {
@@ -949,7 +1040,7 @@ onMounted(async () => {
       console.error('Failed to load chains:', error)
     }
   }
-  
+
   loadAvailableTokens()
   loadAvailableRpcEndpoints()
   // 清理blockchain service的缓存，确保使用正确的chainId
@@ -1019,22 +1110,31 @@ const toggleGroupCountdown = (groupId) => {
     const defaultSeconds = countdown ? countdown.total : 10 // 默认10秒
     startGroupCountdown(groupId, defaultSeconds)
   }
+  // Save settings to database
+  saveGroupSettings(groupId)
 }
 
 const setGroupCountdownTime = (groupId, seconds) => {
+  // Convert to integer
+  const secondsInt = parseInt(seconds, 10)
+  
   const countdown = groupCountdowns.value.get(groupId)
   if (countdown) {
-    countdown.total = seconds
+    countdown.total = secondsInt
     if (!countdown.enabled) {
-      countdown.remaining = seconds
+      countdown.remaining = secondsInt
     }
   } else {
     groupCountdowns.value.set(groupId, {
       enabled: false,
-      remaining: seconds,
-      total: seconds
+      remaining: secondsInt,
+      total: secondsInt
     })
   }
+  // Trigger reactivity by creating a new Map
+  groupCountdowns.value = new Map(groupCountdowns.value)
+  // Save settings to database
+  saveGroupSettings(groupId)
 }
 
 const refreshSingleGroup = async (groupId) => {
@@ -1350,7 +1450,10 @@ const toggleTokenForGroup = (groupId, tokenId) => {
   } else {
     groupTokenSelections.value.set(groupId, [...selectedTokens, tokenId])
   }
-  saveGroupTokenSelections()
+  // Trigger reactivity by creating a new Map
+  groupTokenSelections.value = new Map(groupTokenSelections.value)
+  // Save settings to database
+  saveGroupSettings(groupId)
   
   // 如果该分组已经加载过余额，重新查询
   const group = groupsData.value.find(g => g.group_id === groupId)
@@ -1381,12 +1484,18 @@ const toggleTokenForGroup = (groupId, tokenId) => {
 const selectAllTokensForGroup = (groupId) => {
   const allActiveTokenIds = availableTokens.value.filter(token => token.is_active).map(token => token.id)
   groupTokenSelections.value.set(groupId, allActiveTokenIds)
-  saveGroupTokenSelections()
+  // Trigger reactivity by creating a new Map
+  groupTokenSelections.value = new Map(groupTokenSelections.value)
+  // Save settings to database
+  saveGroupSettings(groupId)
 }
 
 const clearTokensForGroup = (groupId) => {
   groupTokenSelections.value.set(groupId, [])
-  saveGroupTokenSelections()
+  // Trigger reactivity by creating a new Map
+  groupTokenSelections.value = new Map(groupTokenSelections.value)
+  // Save settings to database
+  saveGroupSettings(groupId)
 }
 
 const saveGroupTokenSelections = () => {
@@ -1425,7 +1534,10 @@ const getGroupSelectedRpc = (groupId) => {
 const setGroupSelectedRpc = (groupId, rpcEndpointId) => {
   console.log(`setGroupSelectedRpc for group ${groupId}:`, rpcEndpointId, 'type:', typeof rpcEndpointId)
   groupRpcSelections.value.set(groupId, rpcEndpointId)
-  saveGroupRpcSelections()
+  // Trigger reactivity by creating a new Map
+  groupRpcSelections.value = new Map(groupRpcSelections.value)
+  // Save settings to database
+  saveGroupSettings(groupId)
   
   console.log('Updated groupRpcSelections:', Object.fromEntries(groupRpcSelections.value))
   
@@ -1510,7 +1622,8 @@ const loadAvailableRpcEndpoints = async () => {
         console.log(`Set default RPC for group ${group.group_name}: ${availableRpcEndpoints.value[0].name}`)
       }
     })
-    saveGroupRpcSelections()
+    // Note: Removed localStorage save since we now use database
+    // saveGroupRpcSelections() - REMOVED
     
     console.log('=== End Loading RPC Endpoints ===')
   } catch (error) {
@@ -1573,8 +1686,9 @@ const loadAvailableTokens = async () => {
           }
         }
       })
-      saveGroupTokenSelections()
-      
+      // Note: Removed localStorage save since we now use database
+      // saveGroupTokenSelections() - REMOVED
+
       // 如果有分组需要刷新，延迟后自动刷新
       if (needsRefresh) {
         setTimeout(() => {
@@ -1785,10 +1899,7 @@ const loadGroupsData = async () => {
       }
     })
 
-    // 自动开始查询所有分组的BNB余额（不包含Token）
-    setTimeout(() => {
-      loadAllGroupsBNBBalance()
-    }, 500) // 延迟500ms确保UI已渲染
+    // Auto-query removed: Users now manually trigger balance queries
     
   } catch (error) {
     window.showNotification('error', '加载分组数据失败')
@@ -2431,6 +2542,216 @@ const onDragEnd = async (evt) => {
     sortingInProgress.value = false
   }
 }
+
+// Create group function
+const createGroup = async () => {
+  try {
+    await walletStore.createGroup(authStore.userId, newGroup.value)
+    showCreateGroupModal.value = false
+    newGroup.value = { name: '', description: '' }
+    window.showNotification('success', '分组创建成功')
+    await refreshData()
+  } catch (error) {
+    window.showNotification('error', '创建失败')
+  }
+}
+
+// Add address function
+const addAddress = async () => {
+  try {
+    // Parse addresses, support batch add
+    const addresses = newAddress.value.address
+      .split(',')
+      .map(addr => addr.trim())
+      .filter(addr => addr.length > 0)
+
+    if (addresses.length === 0) {
+      window.showNotification('error', '请输入有效的地址')
+      return
+    }
+
+    // Validate address format
+    const invalidAddresses = addresses.filter(addr => !addr.match(/^0x[a-fA-F0-9]{40}$/))
+    if (invalidAddresses.length > 0) {
+      window.showNotification('error', `无效的地址格式: ${invalidAddresses.join(', ')}`)
+      return
+    }
+
+    let successCount = 0
+    let failedAddresses = []
+
+    // Batch add addresses
+    for (const address of addresses) {
+      try {
+        const addressData = {
+          address: address,
+          label: newAddress.value.label || undefined,
+          group_id: newAddress.value.group_id || undefined
+        }
+
+        await walletStore.addAddress(authStore.userId, addressData)
+        successCount++
+      } catch (error) {
+        failedAddresses.push(address)
+      }
+    }
+
+    // Show result
+    if (successCount > 0) {
+      window.showNotification('success', `成功添加 ${successCount} 个地址`)
+    }
+
+    if (failedAddresses.length > 0) {
+      window.showNotification('error', `${failedAddresses.length} 个地址添加失败`)
+    }
+
+    // Clear form and close modal
+    showAddAddressModal.value = false
+    newAddress.value = { address: '', label: '', group_id: '' }
+    await refreshData()
+
+  } catch (error) {
+    window.showNotification('error', '添加失败')
+  }
+}
+
+// Helper function to truncate address
+const truncateAddress = (address) => {
+  if (!address) return ''
+  return `${address.slice(0, 6)}...${address.slice(-4)}`
+}
+
+// ====== Group Settings Persistence Functions ======
+
+// Load settings from database
+const loadGroupSettingsFromDB = async () => {
+  try {
+    const response = await groupSettingsAPI.getAllSettings(authStore.userId)
+    const settingsList = response.data
+
+    console.log('=== Loading Group Settings from DB ===')
+    console.log('Raw response:', response)
+    console.log('Settings list:', settingsList)
+    console.log('Settings count:', settingsList.length)
+
+    // Clear all existing selections before loading
+    console.log('Clearing existing selections...')
+    groupRpcSelections.value.clear()
+    groupTokenSelections.value.clear()
+
+    // Apply loaded settings to each group
+    settingsList.forEach(settings => {
+      const groupId = settings.group_id
+
+      console.log(`\n=== Processing settings for group ${groupId} ===`)
+      console.log('Full settings object:', settings)
+      console.log('selected_rpc_id value:', settings.selected_rpc_id, 'type:', typeof settings.selected_rpc_id)
+      console.log('selected_token_ids value:', settings.selected_token_ids, 'type:', typeof settings.selected_token_ids, 'isArray:', Array.isArray(settings.selected_token_ids))
+
+      // Apply countdown settings (always load duration, even if disabled)
+      groupCountdowns.value.set(groupId, {
+        enabled: settings.countdown_enabled || false,
+        total: settings.countdown_duration || 600,
+        remaining: settings.countdown_duration || 600
+      })
+
+      // Apply RPC selection
+      console.log(`\nChecking RPC selection for group ${groupId}:`)
+      console.log('  - selected_rpc_id:', settings.selected_rpc_id)
+      console.log('  - Condition check (settings.selected_rpc_id):', !!settings.selected_rpc_id)
+
+      if (settings.selected_rpc_id) {
+        console.log(`  ✓ Setting RPC ${settings.selected_rpc_id} for group ${groupId}`)
+        groupRpcSelections.value.set(groupId, settings.selected_rpc_id)
+        console.log(`  ✓ RPC set successfully. Verifying: ${groupRpcSelections.value.get(groupId)}`)
+      } else {
+        console.log(`  ✗ No RPC set for group ${groupId} (selected_rpc_id is falsy)`)
+      }
+
+      // Apply token selection
+      console.log(`\nChecking Token selection for group ${groupId}:`)
+      console.log('  - selected_token_ids:', settings.selected_token_ids)
+      console.log('  - Is array:', Array.isArray(settings.selected_token_ids))
+      console.log('  - Length:', settings.selected_token_ids?.length)
+
+      if (settings.selected_token_ids && settings.selected_token_ids.length > 0) {
+        console.log(`  ✓ Setting ${settings.selected_token_ids.length} tokens for group ${groupId}:`, settings.selected_token_ids)
+        groupTokenSelections.value.set(groupId, settings.selected_token_ids)
+        console.log(`  ✓ Tokens set successfully. Verifying:`, groupTokenSelections.value.get(groupId))
+      } else {
+        console.log(`  ✗ No tokens to set for group ${groupId}`)
+      }
+    })
+
+    // Trigger reactivity for all Maps
+    console.log('\n=== Triggering Map Reactivity ===')
+    groupCountdowns.value = new Map(groupCountdowns.value)
+    groupRpcSelections.value = new Map(groupRpcSelections.value)
+    groupTokenSelections.value = new Map(groupTokenSelections.value)
+
+    console.log('\n=== Final Verification ===')
+    console.log('✓ Settings applied to groups')
+    console.log('✓ RPC selections Map size:', groupRpcSelections.value.size)
+    console.log('✓ RPC selections content:', Object.fromEntries(groupRpcSelections.value))
+    console.log('✓ Token selections Map size:', groupTokenSelections.value.size)
+    console.log('✓ Token selections content:', Object.fromEntries(groupTokenSelections.value))
+
+    // Start countdowns for groups that have countdown enabled
+    console.log('\n=== Starting Enabled Countdowns ===')
+    groupCountdowns.value.forEach((countdown, groupId) => {
+      if (countdown.enabled) {
+        console.log(`✓ Starting countdown for group ${groupId}: ${countdown.remaining}s`)
+        startGroupCountdown(groupId, countdown.remaining)
+      }
+    })
+  } catch (error) {
+    console.error('Failed to load group settings:', error)
+  }
+}
+
+// Save settings to database (debounced)
+let saveSettingsTimers = new Map()
+
+const saveGroupSettings = async (groupId) => {
+  // Clear existing timer for this group
+  if (saveSettingsTimers.has(groupId)) {
+    clearTimeout(saveSettingsTimers.get(groupId))
+  }
+
+  // Debounce: save after 1 second of no changes
+  const timer = setTimeout(async () => {
+    try {
+      const countdown = groupCountdowns.value.get(groupId)
+      const selectedRpcId = groupRpcSelections.value.get(groupId)
+      const selectedTokenIds = groupTokenSelections.value.get(groupId) || []
+
+      console.log(`=== Saving settings for group ${groupId} ===`)
+      console.log('countdown:', countdown)
+      console.log('selectedRpcId:', selectedRpcId, 'type:', typeof selectedRpcId)
+      console.log('selectedTokenIds:', selectedTokenIds)
+
+      const settingsData = {
+        countdown_enabled: countdown?.enabled || false,
+        countdown_duration: parseInt(countdown?.total, 10) || 600,
+        selected_rpc_id: selectedRpcId !== undefined ? selectedRpcId : null,
+        selected_token_ids: selectedTokenIds
+      }
+
+      console.log('settingsData to save:', settingsData)
+
+      await groupSettingsAPI.updateSettings(authStore.userId, groupId, settingsData)
+      console.log(`Settings saved successfully for group ${groupId}`)
+    } catch (error) {
+      console.error(`Failed to save settings for group ${groupId}:`, error)
+    } finally {
+      saveSettingsTimers.delete(groupId)
+    }
+  }, 1000)
+
+  saveSettingsTimers.set(groupId, timer)
+}
+
+// Auto-save is now handled in individual setter functions instead of global watch
 
 </script>
 

@@ -220,3 +220,13 @@ artifacts/
 
 # Coverage reports
 coverage.json
+
+# Debug and temporary SQL files
+debug_*.sql
+check_*.sql
+*_debug_*.md
+*_checklist.md
+
+# ai
+.claude
+.serena

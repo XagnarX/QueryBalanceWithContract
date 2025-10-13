@@ -52,6 +52,24 @@ type WalletAddress struct {
 	Group *WalletGroup `json:"group,omitempty" gorm:"foreignKey:GroupID"`
 }
 
+// WalletGroupSettings 钱包分组配置模型
+type WalletGroupSettings struct {
+	ID                uint      `json:"id" gorm:"primaryKey"`
+	GroupID           uint      `json:"group_id" gorm:"not null;uniqueIndex:uq_group_settings_user_group,composite:user_id;index"`
+	UserID            uint      `json:"user_id" gorm:"not null;index;uniqueIndex:uq_group_settings_user_group,composite:user_id"`
+	CountdownEnabled  bool      `json:"countdown_enabled" gorm:"default:false"`
+	CountdownDuration int       `json:"countdown_duration" gorm:"default:600"`
+	SelectedRPCID     *uint     `json:"selected_rpc_id" gorm:"index"`
+	SelectedTokenIDs  string    `json:"selected_token_ids" gorm:"type:jsonb;default:'[]'"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+
+	// 关联关系
+	User  User             `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	Group WalletGroup      `json:"group,omitempty" gorm:"foreignKey:GroupID"`
+	RPC   *UserRPCEndpoint `json:"rpc,omitempty" gorm:"foreignKey:SelectedRPCID"`
+}
+
 // Token struct removed - using UserToken instead
 
 // Chain 区块链网络模型
@@ -159,6 +177,27 @@ type AddAddressRequest struct {
 	Address string `json:"address" binding:"required,len=42"`
 	Label   string `json:"label"`
 	GroupID *uint  `json:"group_id"`
+}
+
+// UpdateGroupSettingsRequest 更新分组配置请求
+type UpdateGroupSettingsRequest struct {
+	CountdownEnabled  bool   `json:"countdown_enabled"`
+	CountdownDuration int    `json:"countdown_duration" binding:"min=10,max=7200"`
+	SelectedRPCID     *uint  `json:"selected_rpc_id"`
+	SelectedTokenIDs  []uint `json:"selected_token_ids"`
+}
+
+// GroupSettingsResponse 分组配置响应
+type GroupSettingsResponse struct {
+	ID                uint   `json:"id"`
+	GroupID           uint   `json:"group_id"`
+	UserID            uint   `json:"user_id"`
+	CountdownEnabled  bool   `json:"countdown_enabled"`
+	CountdownDuration int    `json:"countdown_duration"`
+	SelectedRPCID     *uint  `json:"selected_rpc_id"`
+	SelectedTokenIDs  []uint `json:"selected_token_ids"`
+	CreatedAt         string `json:"created_at"`
+	UpdatedAt         string `json:"updated_at"`
 }
 
 // CreateUserRPCRequest 创建用户RPC请求
@@ -272,6 +311,10 @@ func (UserToken) TableName() string {
 	return "user_tokens"
 }
 
+func (WalletGroupSettings) TableName() string {
+	return "wallet_group_settings"
+}
+
 // Compatibility structures for frontend
 // Token compatible structure for API responses
 type Token struct {
@@ -350,5 +393,16 @@ func (wa *WalletAddress) BeforeCreate(tx *gorm.DB) error {
 
 func (wa *WalletAddress) BeforeUpdate(tx *gorm.DB) error {
 	wa.UpdatedAt = time.Now()
+	return nil
+}
+
+func (wgs *WalletGroupSettings) BeforeCreate(tx *gorm.DB) error {
+	wgs.CreatedAt = time.Now()
+	wgs.UpdatedAt = time.Now()
+	return nil
+}
+
+func (wgs *WalletGroupSettings) BeforeUpdate(tx *gorm.DB) error {
+	wgs.UpdatedAt = time.Now()
 	return nil
 }

@@ -1,11 +1,57 @@
 <template>
   <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
     <div class="px-4 py-6 sm:px-0">
-      <div class="flex justify-between items-center">
+      <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-gray-900">地址管理</h1>
         <button @click="showAddModal = true" class="btn-primary">
           添加新地址
         </button>
+      </div>
+
+      <!-- Filter Section -->
+      <div class="bg-white rounded-lg shadow p-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Group Filter -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">按分组筛选</label>
+            <select v-model="filters.groupId" class="input">
+              <option value="">全部分组</option>
+              <option value="ungrouped">未分组</option>
+              <option v-for="group in walletStore.groups" :key="group.id" :value="group.id">
+                {{ group.name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Address Search -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">搜索地址</label>
+            <input
+              v-model="filters.addressSearch"
+              type="text"
+              class="input"
+              placeholder="输入地址或标签搜索"
+            />
+          </div>
+
+          <!-- Filter Actions -->
+          <div class="flex items-end">
+            <button
+              @click="clearFilters"
+              class="btn-secondary w-full"
+            >
+              清除筛选
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Stats -->
+        <div class="mt-4 text-sm text-gray-600">
+          显示 <span class="font-semibold text-gray-900">{{ filteredAddresses.length }}</span> 个地址
+          <span v-if="filters.groupId || filters.addressSearch">
+            （共 {{ walletStore.addresses.length }} 个）
+          </span>
+        </div>
       </div>
     </div>
 
@@ -34,7 +80,7 @@
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="address in walletStore.addresses" :key="address.id">
+              <tr v-for="address in filteredAddresses" :key="address.id">
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="text-sm font-mono text-gray-900">
                     {{ truncateAddress(address.address) }}
@@ -117,7 +163,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useWalletStore } from '@/stores/wallet'
 
@@ -125,11 +171,49 @@ const authStore = useAuthStore()
 const walletStore = useWalletStore()
 const showAddModal = ref(false)
 
+// Filter state
+const filters = reactive({
+  groupId: '',
+  addressSearch: ''
+})
+
 const newAddress = reactive({
   address: '',
   label: '',
   group_id: ''
 })
+
+// Computed filtered addresses
+const filteredAddresses = computed(() => {
+  let result = walletStore.addresses
+
+  // Filter by group
+  if (filters.groupId) {
+    if (filters.groupId === 'ungrouped') {
+      result = result.filter(addr => !addr.group_id)
+    } else {
+      result = result.filter(addr => addr.group_id === filters.groupId)
+    }
+  }
+
+  // Filter by address or label search
+  if (filters.addressSearch) {
+    const searchLower = filters.addressSearch.toLowerCase()
+    result = result.filter(addr => {
+      const addressMatch = addr.address.toLowerCase().includes(searchLower)
+      const labelMatch = addr.label && addr.label.toLowerCase().includes(searchLower)
+      return addressMatch || labelMatch
+    })
+  }
+
+  return result
+})
+
+// Clear all filters
+const clearFilters = () => {
+  filters.groupId = ''
+  filters.addressSearch = ''
+}
 
 onMounted(async () => {
   await Promise.all([

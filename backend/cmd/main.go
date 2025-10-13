@@ -34,6 +34,7 @@ func main() {
 	userHandler := handlers.NewUserHandler()
 	walletHandler := handlers.NewWalletHandler()
 	chainHandler := handlers.NewChainHandler(database.GetDB())
+	groupSettingsHandler := handlers.NewGroupSettingsHandler()
 
 	// API路由组
 	api := router.Group("/api")
@@ -64,6 +65,12 @@ func main() {
 			protected.PUT("/:user_id/groups/reorder", walletHandler.ReorderGroups)                 // 重排序分组
 			protected.GET("/:user_id/groups/:group_id/addresses", walletHandler.GetGroupAddresses) // 获取分组地址
 			protected.DELETE("/:user_id/groups/:group_id", walletHandler.DeleteGroup)              // 删除分组
+
+			// 分组配置相关路由
+			protected.GET("/:user_id/groups/settings", groupSettingsHandler.GetAllGroupSettings)             // 获取所有分组配置
+			protected.GET("/:user_id/groups/:group_id/settings", groupSettingsHandler.GetGroupSettings)      // 获取分组配置
+			protected.PUT("/:user_id/groups/:group_id/settings", groupSettingsHandler.UpdateGroupSettings)   // 更新分组配置
+			protected.DELETE("/:user_id/groups/:group_id/settings", groupSettingsHandler.DeleteGroupSettings) // 删除分组配置
 
 			// 钱包地址相关路由
 			protected.POST("/:user_id/addresses", walletHandler.AddAddress)                  // 添加地址

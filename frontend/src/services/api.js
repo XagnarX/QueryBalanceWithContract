@@ -132,15 +132,38 @@ export const tokenAPI = {
   getTokens() {
     return api.get('/tokens')
   },
-  
+
   // 用户添加代币
   addToken(userId, tokenData) {
     return api.post(`/users/${userId}/tokens`, tokenData)
   },
-  
+
   // 用户更新代币
   updateToken(userId, tokenId, tokenData) {
     return api.put(`/users/${userId}/tokens/${tokenId}`, tokenData)
+  }
+}
+
+// 分组配置相关API
+export const groupSettingsAPI = {
+  // 获取所有分组配置
+  getAllSettings(userId) {
+    return api.get(`/users/${userId}/groups/settings`)
+  },
+
+  // 获取单个分组配置
+  getSettings(userId, groupId) {
+    return api.get(`/users/${userId}/groups/${groupId}/settings`)
+  },
+
+  // 更新分组配置
+  updateSettings(userId, groupId, settingsData) {
+    return api.put(`/users/${userId}/groups/${groupId}/settings`, settingsData)
+  },
+
+  // 删除分组配置
+  deleteSettings(userId, groupId) {
+    return api.delete(`/users/${userId}/groups/${groupId}/settings`)
   }
 }
 
