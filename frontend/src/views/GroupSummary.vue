@@ -1022,13 +1022,6 @@ const groupCountdowns = ref(new Map()) // 存储每个分组的倒计时状态
 const groupTimers = ref(new Map()) // 存储每个分组的定时器
 
 onMounted(async () => {
-  // Load settings from database first
-  await loadGroupSettingsFromDB()
-
-  // Note: Removed localStorage loading functions since we now use database
-  // loadGroupTokenSelections() - REMOVED: Using database instead
-  // loadGroupRpcSelections() - REMOVED: Using database instead
-
   // 确保chainStore已经加载了chains数据
   const chainStore = useChainStore()
   if (chainStore.chains.length === 0) {
@@ -1041,8 +1034,20 @@ onMounted(async () => {
     }
   }
 
-  loadAvailableTokens()
-  loadAvailableRpcEndpoints()
+  // Load available RPC endpoints and tokens first (before loading settings)
+  console.log('Loading available RPC endpoints and tokens...')
+  await loadAvailableRpcEndpoints()
+  await loadAvailableTokens()
+  console.log('Available resources loaded')
+
+  // Then load settings from database
+  console.log('Loading group settings from database...')
+  await loadGroupSettingsFromDB()
+
+  // Note: Removed localStorage loading functions since we now use database
+  // loadGroupTokenSelections() - REMOVED: Using database instead
+  // loadGroupRpcSelections() - REMOVED: Using database instead
+
   // 清理blockchain service的缓存，确保使用正确的chainId
   import('@/services/blockchain').then(module => {
     module.default.clearCache()
@@ -2634,10 +2639,7 @@ const loadGroupSettingsFromDB = async () => {
     console.log('Settings list:', settingsList)
     console.log('Settings count:', settingsList.length)
 
-    // Clear all existing selections before loading
-    console.log('Clearing existing selections...')
-    groupRpcSelections.value.clear()
-    groupTokenSelections.value.clear()
+    // Note: Don't clear existing selections - preserve any defaults set by loadAvailableRpcEndpoints
 
     // Apply loaded settings to each group
     settingsList.forEach(settings => {

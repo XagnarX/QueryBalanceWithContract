@@ -113,12 +113,16 @@ func main() {
 	})
 
 	// 启动服务器
-	port := ":8888"
-	log.Printf("服务器启动在端口 %s", port)
-	log.Printf("访问 http://localhost%s 查看服务状态", port)
-	log.Printf("API文档: http://localhost%s/api", port)
+	host := "0.0.0.0" // Listen on all network interfaces
+	port := "8888"
+	addr := host + ":" + port
 
-	if err := router.Run(port); err != nil {
+	log.Printf("服务器启动在 %s", addr)
+	log.Printf("本地访问: http://localhost:%s", port)
+	log.Printf("局域网访问: http://192.168.71.9:%s", port)
+	log.Printf("API文档: http://localhost:%s/api", port)
+
+	if err := router.Run(addr); err != nil {
 		log.Fatalf("服务器启动失败: %v", err)
 	}
 }
