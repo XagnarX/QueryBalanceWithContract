@@ -19,8 +19,8 @@ func NewGroupSettingsService() *GroupSettingsService {
 	}
 }
 
-// GetGroupSettings retrieves settings for a specific group
-func (s *GroupSettingsService) GetGroupSettings(userID, groupID uint) (*models.WalletGroupSettings, error) {
+// GetGroupSettings retrieves settings for a specific group and chain
+func (s *GroupSettingsService) GetGroupSettings(userID, groupID uint, chainID int) (*models.WalletGroupSettings, error) {
 	// Verify group belongs to user
 	var group models.WalletGroup
 	if err := s.db.Where("id = ? AND user_id = ?", groupID, userID).First(&group).Error; err != nil {
@@ -28,7 +28,7 @@ func (s *GroupSettingsService) GetGroupSettings(userID, groupID uint) (*models.W
 	}
 
 	var settings models.WalletGroupSettings
-	err := s.db.Where("user_id = ? AND group_id = ?", userID, groupID).First(&settings).Error
+	err := s.db.Where("user_id = ? AND group_id = ? AND chain_id = ?", userID, groupID, chainID).First(&settings).Error
 
 	if err != nil {
 		// If settings don't exist, return default settings
@@ -36,6 +36,7 @@ func (s *GroupSettingsService) GetGroupSettings(userID, groupID uint) (*models.W
 			return &models.WalletGroupSettings{
 				UserID:            userID,
 				GroupID:           groupID,
+				ChainID:           chainID,
 				CountdownEnabled:  false,
 				CountdownDuration: 600,
 				SelectedRPCID:     nil,
@@ -48,8 +49,8 @@ func (s *GroupSettingsService) GetGroupSettings(userID, groupID uint) (*models.W
 	return &settings, nil
 }
 
-// GetAllGroupSettings retrieves settings for all groups of a user
-func (s *GroupSettingsService) GetAllGroupSettings(userID uint) ([]models.WalletGroupSettings, error) {
+// GetAllGroupSettings retrieves settings for all groups of a user and a specific chain
+func (s *GroupSettingsService) GetAllGroupSettings(userID uint, chainID int) ([]models.WalletGroupSettings, error) {
 	var settings []models.WalletGroupSettings
 
 	// Get all groups for the user
@@ -58,10 +59,10 @@ func (s *GroupSettingsService) GetAllGroupSettings(userID uint) ([]models.Wallet
 		return nil, err
 	}
 
-	// Get settings for each group
+	// Get settings for each group and the specified chain
 	for _, group := range groups {
 		var setting models.WalletGroupSettings
-		err := s.db.Where("user_id = ? AND group_id = ?", userID, group.ID).First(&setting).Error
+		err := s.db.Where("user_id = ? AND group_id = ? AND chain_id = ?", userID, group.ID, chainID).First(&setting).Error
 
 		if err != nil {
 			// If settings don't exist, create default settings
@@ -69,6 +70,7 @@ func (s *GroupSettingsService) GetAllGroupSettings(userID uint) ([]models.Wallet
 				setting = models.WalletGroupSettings{
 					UserID:            userID,
 					GroupID:           group.ID,
+					ChainID:           chainID,
 					CountdownEnabled:  false,
 					CountdownDuration: 600,
 					SelectedRPCID:     nil,
@@ -118,9 +120,9 @@ func (s *GroupSettingsService) UpdateGroupSettings(userID, groupID uint, req *mo
 		return nil, fmt.Errorf("Token ID序列化失败")
 	}
 
-	// Try to find existing settings
+	// Try to find existing settings for this chain
 	var settings models.WalletGroupSettings
-	err = s.db.Where("user_id = ? AND group_id = ?", userID, groupID).First(&settings).Error
+	err = s.db.Where("user_id = ? AND group_id = ? AND chain_id = ?", userID, groupID, req.ChainID).First(&settings).Error
 
 	if err != nil {
 		// Create new settings if not found
@@ -128,6 +130,7 @@ func (s *GroupSettingsService) UpdateGroupSettings(userID, groupID uint, req *mo
 			settings = models.WalletGroupSettings{
 				UserID:            userID,
 				GroupID:           groupID,
+				ChainID:           req.ChainID,
 				CountdownEnabled:  req.CountdownEnabled,
 				CountdownDuration: req.CountdownDuration,
 				SelectedRPCID:     req.SelectedRPCID,
@@ -156,15 +159,15 @@ func (s *GroupSettingsService) UpdateGroupSettings(userID, groupID uint, req *mo
 	return &settings, nil
 }
 
-// DeleteGroupSettings deletes settings for a group
-func (s *GroupSettingsService) DeleteGroupSettings(userID, groupID uint) error {
+// DeleteGroupSettings deletes settings for a group and chain
+func (s *GroupSettingsService) DeleteGroupSettings(userID, groupID uint, chainID int) error {
 	// Verify group belongs to user
 	var group models.WalletGroup
 	if err := s.db.Where("id = ? AND user_id = ?", groupID, userID).First(&group).Error; err != nil {
 		return fmt.Errorf("分组不存在或无权访问")
 	}
 
-	result := s.db.Where("user_id = ? AND group_id = ?", userID, groupID).Delete(&models.WalletGroupSettings{})
+	result := s.db.Where("user_id = ? AND group_id = ? AND chain_id = ?", userID, groupID, chainID).Delete(&models.WalletGroupSettings{})
 	if result.Error != nil {
 		return fmt.Errorf("删除配置失败: %v", result.Error)
 	}
@@ -183,6 +186,7 @@ func (s *GroupSettingsService) ConvertToResponse(settings *models.WalletGroupSet
 		ID:                settings.ID,
 		GroupID:           settings.GroupID,
 		UserID:            settings.UserID,
+		ChainID:           settings.ChainID,
 		CountdownEnabled:  settings.CountdownEnabled,
 		CountdownDuration: settings.CountdownDuration,
 		SelectedRPCID:     settings.SelectedRPCID,

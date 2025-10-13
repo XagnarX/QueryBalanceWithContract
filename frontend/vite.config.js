@@ -10,6 +10,7 @@ export default defineConfig({
     }
   },
   server: {
+    host: '0.0.0.0', // Allow access from any network interface
     port: 3000,
     proxy: {
       '/api': {
