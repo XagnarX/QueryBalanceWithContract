@@ -16,7 +16,7 @@ DB_CONFIG = {
     'port': 5432,
     'database': 'wallet_manager',
     'user': 'postgres',
-    'password': 'password123'
+    'password': 'postgres'
 }
 
 
