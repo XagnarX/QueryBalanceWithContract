@@ -37,11 +37,11 @@ module.exports = {
       max_memory_restart: '500M',
       env: {
         NODE_ENV: 'development',
-        PORT: '5173'
+        PORT: '3000'
       },
       env_production: {
         NODE_ENV: 'production',
-        PORT: '5173'
+        PORT: '3000'
       },
       error_file: './logs/frontend-error.log',
       out_file: './logs/frontend-out.log',

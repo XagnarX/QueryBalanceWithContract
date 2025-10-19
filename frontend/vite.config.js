@@ -11,7 +11,7 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0', // Allow access from any network interface
-    port: 3000,
+    port: parseInt(process.env.PORT || '3000'), // Use PORT from env or default to 3000
     proxy: {
       '/api': {
         target: 'http://localhost:8888',

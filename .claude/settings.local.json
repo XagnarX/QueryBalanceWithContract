@@ -25,7 +25,8 @@
       "Bash(go build:*)",
       "Bash(cat:*)",
       "Bash(PGPASSWORD=postgres psql:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "mcp__serena__think_about_collected_information"
     ],
     "deny": [],
     "ask": []
