@@ -79,7 +79,8 @@ func main() {
 
 			// 用户代币管理路由
 			protected.POST("/:user_id/tokens", chainHandler.CreateUserToken)                    // 用户添加代币
-			protected.PUT("/:user_id/tokens/:token_id", chainHandler.UpdateUserToken)        // 用户更新代币
+			protected.PUT("/:user_id/tokens/:token_id", chainHandler.UpdateUserToken)           // 用户更新代币
+			protected.DELETE("/:user_id/tokens/:token_id", chainHandler.DeleteUserToken)        // 用户删除代币
 			
 			// 用户RPC管理路由
 			protected.POST("/:user_id/rpc-endpoints", chainHandler.CreateUserRPC)                    // 用户添加RPC端点

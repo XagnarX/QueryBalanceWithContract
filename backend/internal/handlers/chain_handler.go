@@ -351,6 +351,42 @@ func (h *ChainHandler) UpdateUserToken(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "代币更新成功", "token": updatedToken})
 }
 
+// DeleteUserToken deletes user's custom token
+func (h *ChainHandler) DeleteUserToken(c *gin.Context) {
+	userIDStr := c.Param("user_id")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
+		return
+	}
+
+	tokenIDStr := c.Param("token_id")
+	tokenID, err := strconv.ParseUint(tokenIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的代币ID"})
+		return
+	}
+
+	// Verify token belongs to the user
+	_, err = h.chainService.GetUserTokenByID(uint(tokenID), uint(userID))
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "代币不存在或无权限访问"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "获取代币信息失败"})
+		}
+		return
+	}
+
+	// Delete the token
+	if err := h.chainService.DeleteUserToken(uint(tokenID), uint(userID)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除代币失败: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "代币删除成功"})
+}
+
 // GetUserTokens 获取用户代币列表（包含系统和用户的）
 func (h *ChainHandler) GetUserTokens(c *gin.Context) {
 	chainIDStr := c.Param("chain_id")

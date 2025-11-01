@@ -264,8 +264,10 @@
               <!-- 时间输入 -->
               <input 
                 type="number" 
-                :value="groupCountdowns.get(group.group_id)?.total || 10"
-                @change="setGroupCountdownTime(group.group_id, $event.target.value)"
+                :value="getEditingCountdownTime(group.group_id)"
+                @input="updateEditingCountdownTime(group.group_id, $event.target.value)"
+                @blur="applyCountdownTime(group.group_id)"
+                @keydown.enter="applyCountdownTime(group.group_id)"
                 min="10" 
                 max="7200"
                 class="w-16 px-1 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
@@ -890,11 +892,35 @@
 
         <!-- Token列表 -->
         <div>
-          <h4 class="text-md font-medium text-gray-800 mb-3">现有Token列表</h4>
+          <!-- Search box -->
+          <div class="mb-4">
+            <div class="relative">
+              <input 
+                v-model="tokenSearchQuery"
+                type="text" 
+                placeholder="搜索Token (名称/符号/地址)"
+                class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+              >
+              <svg class="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+            </div>
+          </div>
+          
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-md font-medium text-gray-800">
+              现有Token列表 
+              <span class="text-sm text-gray-500 font-normal">({{ filteredTokens.length }})</span>
+            </h4>
+          </div>
+          
           <div class="max-h-64 overflow-y-auto">
-            <div class="space-y-2">
+            <div v-if="filteredTokens.length === 0" class="text-center py-8 text-gray-500">
+              {{ tokenSearchQuery ? '没有找到匹配的Token' : '暂无Token' }}
+            </div>
+            <div v-else class="space-y-2">
               <div 
-                v-for="token in availableTokens" 
+                v-for="token in filteredTokens" 
                 :key="token.id"
                 class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
               >
@@ -921,6 +947,13 @@
                   >
                     {{ token.is_active ? '禁用' : '启用' }}
                   </button>
+                  <button 
+                    @click="confirmDeleteToken(token)"
+                    class="text-sm text-red-600 hover:text-red-800 ml-2"
+                    title="删除Token"
+                  >
+                    删除
+                  </button>
                 </div>
               </div>
             </div>
@@ -934,6 +967,53 @@
             class="btn-secondary"
           >
             关闭
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Token Confirmation Dialog -->
+  <div v-if="tokenToDelete" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+    <div class="relative p-6 border w-full max-w-md shadow-lg rounded-md bg-white">
+      <div class="mt-3">
+        <!-- Icon -->
+        <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+          <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+        </div>
+        
+        <!-- Title -->
+        <h3 class="text-lg font-medium text-gray-900 text-center mt-4">
+          确认删除Token
+        </h3>
+        
+        <!-- Content -->
+        <div class="mt-2 text-center">
+          <p class="text-sm text-gray-500 mb-3">
+            您确定要删除以下Token吗？此操作无法撤销。
+          </p>
+          <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+            <div class="font-medium text-gray-900">{{ tokenToDelete.name }}</div>
+            <div class="text-sm text-gray-500">{{ tokenToDelete.symbol }}</div>
+            <div class="text-xs text-gray-400 font-mono mt-1">{{ tokenToDelete.contract_address }}</div>
+          </div>
+        </div>
+        
+        <!-- Buttons -->
+        <div class="mt-6 flex space-x-3">
+          <button 
+            @click="cancelDeleteToken"
+            class="flex-1 btn-secondary"
+          >
+            取消
+          </button>
+          <button 
+            @click="deleteToken"
+            class="flex-1 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+          >
+            确认删除
           </button>
         </div>
       </div>
@@ -991,6 +1071,10 @@ const newToken = ref({
   decimals: 18
 })
 
+// Token search and delete
+const tokenSearchQuery = ref('')
+const tokenToDelete = ref(null)
+
 // 进度状态
 const progressInfo = ref({
   show: false,
@@ -1020,6 +1104,7 @@ const autoRefresh = ref({
 // 分组倒计时相关
 const groupCountdowns = ref(new Map()) // 存储每个分组的倒计时状态
 const groupTimers = ref(new Map()) // 存储每个分组的定时器
+const editingCountdownTimes = ref(new Map()) // 存储正在编辑的倒计时时间（临时状态）
 
 onMounted(async () => {
   // 确保chainStore已经加载了chains数据
@@ -1147,6 +1232,11 @@ const setGroupCountdownTime = (groupId, seconds) => {
   // Convert to integer
   const secondsInt = parseInt(seconds, 10)
   
+  // Validate input
+  if (isNaN(secondsInt) || secondsInt < 10 || secondsInt > 7200) {
+    return
+  }
+  
   const countdown = groupCountdowns.value.get(groupId)
   if (countdown) {
     countdown.total = secondsInt
@@ -1160,10 +1250,33 @@ const setGroupCountdownTime = (groupId, seconds) => {
       total: secondsInt
     })
   }
-  // Trigger reactivity by creating a new Map
-  groupCountdowns.value = new Map(groupCountdowns.value)
+  // ✅ 移除强制刷新，避免其他输入框被重置
   // Save settings to database
   saveGroupSettings(groupId)
+}
+
+// Get editing countdown time (for input display)
+const getEditingCountdownTime = (groupId) => {
+  // If user is editing, return the editing value
+  if (editingCountdownTimes.value.has(groupId)) {
+    return editingCountdownTimes.value.get(groupId)
+  }
+  // Otherwise return the stored value
+  return groupCountdowns.value.get(groupId)?.total || 10
+}
+
+// Update editing countdown time (on input)
+const updateEditingCountdownTime = (groupId, value) => {
+  editingCountdownTimes.value.set(groupId, value)
+}
+
+// Apply countdown time (on blur or enter)
+const applyCountdownTime = (groupId) => {
+  const editingValue = editingCountdownTimes.value.get(groupId)
+  if (editingValue !== undefined) {
+    setGroupCountdownTime(groupId, editingValue)
+    editingCountdownTimes.value.delete(groupId)
+  }
 }
 
 const refreshSingleGroup = async (groupId) => {
@@ -1450,6 +1563,21 @@ const canAddToken = computed(() => {
          newToken.value.symbol && 
          newToken.value.contractAddress && 
          /^0x[a-fA-F0-9]{40}$/.test(newToken.value.contractAddress)
+})
+
+// Filtered tokens based on search query
+const filteredTokens = computed(() => {
+  if (!tokenSearchQuery.value.trim()) {
+    return availableTokens.value
+  }
+  
+  const query = tokenSearchQuery.value.toLowerCase().trim()
+  return availableTokens.value.filter(token => {
+    const symbolMatch = token.symbol.toLowerCase().includes(query)
+    const nameMatch = token.name.toLowerCase().includes(query)
+    const addressMatch = token.contract_address.toLowerCase().includes(query)
+    return symbolMatch || nameMatch || addressMatch
+  })
 })
 
 const isGroupTokenSelectorExpanded = (groupId) => {
@@ -1853,6 +1981,63 @@ const toggleTokenStatus = async (token) => {
   } catch (error) {
     console.error('Failed to toggle token status:', error)
     window.showNotification('error', 'Token状态切换失败')
+  }
+}
+
+// Confirm delete token
+const confirmDeleteToken = (token) => {
+  tokenToDelete.value = token
+}
+
+// Cancel delete token
+const cancelDeleteToken = () => {
+  tokenToDelete.value = null
+}
+
+// Delete token
+const deleteToken = async () => {
+  if (!tokenToDelete.value) return
+  
+  const token = tokenToDelete.value
+  
+  try {
+    const response = await fetch(`/api/users/${authStore.userId}/tokens/${token.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      }
+    })
+
+    if (response.ok) {
+      window.showNotification('success', 'Token删除成功')
+      
+      // Remove from selected tokens in all groups
+      groupTokenSelections.value.forEach((selectedTokens, groupId) => {
+        if (selectedTokens.includes(token.id)) {
+          groupTokenSelections.value.set(
+            groupId, 
+            selectedTokens.filter(id => id !== token.id)
+          )
+        }
+      })
+      
+      // Reload token list
+      await loadAvailableTokens()
+      
+      // Close delete confirmation
+      tokenToDelete.value = null
+    } else {
+      const errorData = await response.json().catch(() => ({}))
+      const errorMessage = errorData.error || `Token删除失败 (HTTP ${response.status})`
+      window.showNotification('error', errorMessage)
+    }
+  } catch (error) {
+    console.error('Failed to delete token:', error)
+    let errorMessage = 'Token删除失败'
+    if (error.message.includes('fetch')) {
+      errorMessage = '网络连接失败，请检查后端服务是否正常运行'
+    }
+    window.showNotification('error', errorMessage)
   }
 }
 

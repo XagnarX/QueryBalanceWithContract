@@ -17,6 +17,7 @@ export default defineConfig({
         target: 'http://localhost:8888',
         changeOrigin: true
       }
-    }
+    },
+    allowedHosts: ["wallets.vip.cpolar.cn"]
   }
 })
